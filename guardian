@@ -1,5 +1,7 @@
 #!/usr/bin/python2
 
+# See LICENSE file for copyright and license details.
+
 import re
 import mechanize
 

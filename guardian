@@ -1,0 +1,80 @@
+#!/usr/bin/python2
+
+import re
+import mechanize
+
+import sys, tempfile, os
+from subprocess import call
+
+def usage():
+    print "Usage: guardian [article url] [username] [password] [[comment body]]"
+    print "Comment body is optional."
+    print "Ex. guardian http://www.guardian.co.uk/commentisfree/2013/jul/02/france-balance-books-francois-hollande user password 'This is article body'." 
+    print "If you doesn't past comment body you will be moved to your $EDITOR in order to write it down.";
+
+try: 
+    article_url = sys.argv[1]
+except IndexError:
+    print("You must define article url.")
+    usage()
+    exit(1)
+
+try: 
+    username = sys.argv[2]
+except IndexError:
+    print("You must define user name.");
+    usage()
+    exit(1)
+try: 
+    password = sys.argv[3]
+except IndexError:
+    print("You must define user password.");
+    usage()
+    exit(1)
+
+try: 
+    msg_body = sys.argv[4]
+except IndexError:
+    EDITOR = os.environ.get('EDITOR') if os.environ.get('EDITOR') else 'nano'
+    with tempfile.NamedTemporaryFile(suffix=".tmp") as tempfile:
+        call([EDITOR, tempfile.name])
+        msg_body = tempfile.read()
+    
+print msg_body
+
+br = mechanize.Browser()
+br.set_handle_robots(False)
+
+print "Processing article: ", article_url
+
+try:
+    br.open(article_url)
+except mechanize._mechanize.BrowserStateError:
+    print("Given url is not valid")
+    exit(2)
+except:
+    print("Page does not exist.")
+    exit(3)
+
+try:
+    br.follow_link( url_regex="discussion.guardian.co.uk" )
+except mechanize._mechanize.LinkNotFoundError:
+    print('This page does not allow posting comments.')
+    exit(4)
+
+br.follow_link( url_regex="id.guardian.co.uk/signin" )
+
+br.select_form( nr=0 )
+br["emailAddress"] = username
+br["password"] = password
+
+resp = br.submit()
+
+
+br.follow_link( text_regex="Post a comment" )
+
+br.select_form( nr=0 )
+
+br["body"] = msg_body
+resp = br.submit()
+
